@@ -1,0 +1,43 @@
+{
+  "name": "ai-customer-support-chatbot",
+  "version": "1.0.0",
+  "description": "AI-Powered Customer Support Chatbot POC using OpenAI GPT, Redis, and Socket.io",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node index.ts",
+    "dev:watch": "nodemon --exec ts-node index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ai",
+    "chatbot",
+    "customer-support",
+    "openai",
+    "redis",
+    "websocket",
+    "socketio"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@godspeedsystems/core": "^2.5.4",
+    "@godspeedsystems/plugins-express-as-http": "^1.0.30",
+    "@godspeedsystems/plugins-redis-as-datasource": "^1.0.4",
+    "@types/uuid": "^10.0.0",
+    "dotenv": "^16.5.0",
+    "ioredis": "^5.6.1",
+    "openai": "^5.7.0",
+    "redis": "^5.5.6",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.3",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
