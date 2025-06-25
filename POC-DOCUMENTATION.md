@@ -384,35 +384,6 @@ LOG_LEVEL=info              # Logging verbosity
 
 ---
 
-## 📝 Deployment Guide
-
-### **Local Development**
-```bash
-# 1. Clone and install dependencies
-npm install
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-
-# 3. Start Redis
-docker run -d -p 6379:6379 redis:alpine
-
-# 4. Run development server
-npm run dev
-```
-
-### **Docker Deployment**
-```bash
-# 1. Configure environment
-cp .env.docker .env.production
-# Edit .env.production with production settings
-
-# 2. Build and run
-npm run docker:build
-npm run docker:run
-```
-
 ### **Production Considerations**
 - **Environment Variables**: Secure API key management
 - **SSL/HTTPS**: Certificate configuration for production
