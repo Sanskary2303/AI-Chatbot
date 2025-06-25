@@ -9,8 +9,10 @@ services:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=gpt-3.5-turbo
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=gemini-1.5-flash
       - MAX_CONVERSATION_HISTORY=10
       - ESCALATION_KEYWORDS=urgent,emergency,complaint,supervisor,manager,cancel,refund
       - SESSION_TIMEOUT=1800000

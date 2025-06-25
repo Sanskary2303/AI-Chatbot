@@ -40,7 +40,8 @@ async function startServer() {
           timestamp: new Date().toISOString(),
           services: {
             redis: redisStatus,
-            openai: process.env.OPENAI_API_KEY ? 'configured' : 'not configured',
+            openai: process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' ? 'configured' : 'not configured',
+            gemini: process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' ? 'configured' : 'not configured',
             activeSessions: activeSessionsCount
           },
           version: '1.0.0',

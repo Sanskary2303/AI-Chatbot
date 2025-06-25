@@ -3,7 +3,8 @@
 # AI Customer Support Chatbot POC
 
 This is an AI-powered customer support chatbot built with:
-- **OpenAI GPT** for natural language processing
+- **Dual AI Provider Support**: OpenAI GPT (primary) and Google Gemini (fallback)
+- **Automatic Failover**: Seamlessly switches between providers on errors
 - **Redis** for session and conversation history management
 - **Socket.io** for real-time WebSocket communication
 - **TypeScript** for type safety
@@ -20,11 +21,13 @@ This is an AI-powered customer support chatbot built with:
 ## Key Features
 
 - Real-time chat via WebSockets
-- AI-powered responses using OpenAI GPT
+- Dual AI provider support (OpenAI + Gemini) with automatic failover
+- Provider-specific response handling and error recovery
 - Automatic escalation detection based on keywords and confidence
 - Persistent conversation history in Redis
 - RESTful API endpoints for chat management
-- Health monitoring and analytics
+- Health monitoring with AI provider status
+- Provider usage analytics and tracking
 
 ## Development Guidelines
 
@@ -36,8 +39,10 @@ This is an AI-powered customer support chatbot built with:
 
 ## Environment Variables
 
-- `OPENAI_API_KEY` - OpenAI API key for GPT integration
+- `OPENAI_API_KEY` - OpenAI API key for GPT integration (primary provider)
+- `GEMINI_API_KEY` - Google Gemini API key (fallback provider)  
+- `OPENAI_MODEL`, `GEMINI_MODEL` - AI model configurations
 - `REDIS_HOST`, `REDIS_PORT` - Redis connection details
-- `PORT` - Server port (default: 3000)
+- `PORT` - Server port (default: 3001)
 - `MAX_CONVERSATION_HISTORY` - Max messages to store per session
 - `ESCALATION_KEYWORDS` - Comma-separated keywords for escalation detection

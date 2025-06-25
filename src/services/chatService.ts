@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SessionManager } from './sessionManager';
 
 export interface ChatMessage {
@@ -12,19 +13,60 @@ export interface ChatResponse {
   timestamp: string;
   needsEscalation: boolean;
   confidence: number;
+  provider: 'openai' | 'gemini';
 }
 
 export class ChatService {
-  private openai: OpenAI;
+  private openai: OpenAI | null = null;
+  private gemini: GoogleGenerativeAI | null = null;
   private sessionManager: SessionManager;
   private escalationKeywords: string[];
+  private preferredProvider: 'openai' | 'gemini' | 'auto' = 'auto';
 
   constructor(sessionManager: SessionManager) {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
     this.sessionManager = sessionManager;
     this.escalationKeywords = (process.env.ESCALATION_KEYWORDS || '').split(',').map(k => k.trim().toLowerCase());
+    
+    // Initialize available AI providers
+    this.initializeProviders();
+  }
+
+  private initializeProviders() {
+    // Initialize OpenAI if API key is available
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
+      try {
+        this.openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        console.log('✅ OpenAI initialized successfully');
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize OpenAI:', error);
+      }
+    }
+
+    // Initialize Gemini if API key is available
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+      try {
+        this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        console.log('✅ Gemini initialized successfully');
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize Gemini:', error);
+      }
+    }
+
+    // Determine preferred provider
+    if (this.openai && this.gemini) {
+      this.preferredProvider = 'auto'; // Use OpenAI first, fallback to Gemini
+      console.log('🤖 Both AI providers available - using auto-fallback mode');
+    } else if (this.openai) {
+      this.preferredProvider = 'openai';
+      console.log('🤖 Using OpenAI as AI provider');
+    } else if (this.gemini) {
+      this.preferredProvider = 'gemini';
+      console.log('🤖 Using Gemini as AI provider');
+    } else {
+      console.error('❌ No AI providers available! Please configure OPENAI_API_KEY or GEMINI_API_KEY');
+    }
   }
 
   async processMessage(sessionId: string, userMessage: string, userId: string): Promise<ChatResponse> {
@@ -51,37 +93,35 @@ export class ChatService {
           message: escalationMessage,
           timestamp,
           needsEscalation: true,
-          confidence: 1.0
+          confidence: 1.0,
+          provider: this.getAvailableProvider()
         };
       }
 
-      // Prepare messages for OpenAI
-      const messages: ChatMessage[] = [
-        {
-          role: 'system',
-          content: this.getSystemPrompt(),
-          timestamp
-        },
-        ...conversationHistory,
-        {
-          role: 'user',
-          content: userMessage,
-          timestamp
+      // Try to get AI response
+      let aiResponse: string;
+      let usedProvider: 'openai' | 'gemini';
+
+      if (this.preferredProvider === 'auto' || this.preferredProvider === 'openai') {
+        try {
+          const response = await this.getOpenAIResponse(conversationHistory, userMessage, timestamp);
+          aiResponse = response.message;
+          usedProvider = 'openai';
+        } catch (error) {
+          console.warn('OpenAI failed, trying Gemini fallback:', error);
+          if (this.gemini) {
+            const response = await this.getGeminiResponse(conversationHistory, userMessage, timestamp);
+            aiResponse = response.message;
+            usedProvider = 'gemini';
+          } else {
+            throw error;
+          }
         }
-      ];
-
-      // Call OpenAI API
-      const completion = await this.openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
-        max_tokens: 500,
-        temperature: 0.7,
-      });
-
-      const aiResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process your request. Please try again.";
+      } else {
+        const response = await this.getGeminiResponse(conversationHistory, userMessage, timestamp);
+        aiResponse = response.message;
+        usedProvider = 'gemini';
+      }
       
       // Calculate confidence based on response
       const confidence = this.calculateConfidence(aiResponse, userMessage);
@@ -103,7 +143,8 @@ export class ChatService {
         message: aiResponse,
         timestamp,
         needsEscalation: confidence < 0.5, // Escalate if confidence is low
-        confidence
+        confidence,
+        provider: usedProvider
       };
 
     } catch (error) {
@@ -116,9 +157,90 @@ export class ChatService {
         message: fallbackMessage,
         timestamp,
         needsEscalation: true,
-        confidence: 0.0
+        confidence: 0.0,
+        provider: this.getAvailableProvider()
       };
     }
+  }
+
+  private async getOpenAIResponse(conversationHistory: ChatMessage[], userMessage: string, timestamp: string): Promise<{message: string}> {
+    if (!this.openai) {
+      throw new Error('OpenAI not initialized');
+    }
+
+    // Prepare messages for OpenAI
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: this.getSystemPrompt(),
+        timestamp
+      },
+      ...conversationHistory,
+      {
+        role: 'user',
+        content: userMessage,
+        timestamp
+      }
+    ];
+
+    // Call OpenAI API
+    const completion = await this.openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    const aiResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process your request. Please try again.";
+    return { message: aiResponse };
+  }
+
+  private async getGeminiResponse(conversationHistory: ChatMessage[], userMessage: string, timestamp: string): Promise<{message: string}> {
+    if (!this.gemini) {
+      throw new Error('Gemini not initialized');
+    }
+
+    const model = this.gemini.getGenerativeModel({ 
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      generationConfig: {
+        maxOutputTokens: 500,
+        temperature: 0.7,
+      }
+    });
+
+    // Build conversation context for Gemini
+    let prompt = this.getSystemPrompt() + '\n\n';
+    
+    // Add conversation history
+    conversationHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        prompt += `Human: ${msg.content}\n`;
+      } else if (msg.role === 'assistant') {
+        prompt += `Assistant: ${msg.content}\n`;
+      }
+    });
+    
+    // Add current user message
+    prompt += `Human: ${userMessage}\nAssistant:`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const aiResponse = response.text() || "I'm sorry, I couldn't process your request. Please try again.";
+      return { message: aiResponse };
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      throw error;
+    }
+  }
+
+  private getAvailableProvider(): 'openai' | 'gemini' {
+    if (this.openai) return 'openai';
+    if (this.gemini) return 'gemini';
+    return 'openai'; // Default fallback
   }
 
   private getSystemPrompt(): string {
@@ -172,5 +294,13 @@ If a customer's issue is complex, involves sensitive information, or requires hu
     }
     
     return 0.6;
+  }
+
+  getProviderStatus(): { openai: boolean; gemini: boolean; preferred: string } {
+    return {
+      openai: this.openai !== null,
+      gemini: this.gemini !== null,
+      preferred: this.preferredProvider
+    };
   }
 }
