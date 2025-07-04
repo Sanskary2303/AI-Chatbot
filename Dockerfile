@@ -1,23 +1,26 @@
 # Use official Node.js runtime as base image
 FROM node:18-alpine
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Install TypeScript and ts-node globally for building
-RUN npm install -g typescript ts-node
+# Install all dependencies (including devDependencies for building)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build TypeScript to JavaScript
 RUN npm run build
+
+# Remove devDependencies to reduce image size
+RUN npm ci --only=production && npm cache clean --force
 
 # Expose port
 EXPOSE 3001
