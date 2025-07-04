@@ -317,7 +317,7 @@
             currentUserId = userId;
             
             // Connect to WebSocket
-            socket = io('http://localhost:3001');
+            socket = io('http://localhost:3000');
             
             socket.on('connect', () => {
                 updateStatus('Connected', true);
