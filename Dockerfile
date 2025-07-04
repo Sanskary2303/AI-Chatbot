@@ -10,24 +10,21 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production
 
+# Install TypeScript and ts-node globally for building
+RUN npm install -g typescript ts-node
+
 # Copy source code
 COPY . .
 
-# Build the application
+# Build TypeScript to JavaScript
 RUN npm run build
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3001
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S chatbot -u 1001
-
-# Change ownership of the app directory
-RUN chown -R chatbot:nodejs /app
-
-# Switch to non-root user
-USER chatbot
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
 
 # Start the application
 CMD ["npm", "start"]
